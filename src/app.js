@@ -139,4 +139,39 @@ app.post("/messages", async (req, res) => {
   }
 });
 
+app.get("/messages", async (req, res) => {
+  const { user } = req.headers;
+  let messages = null;
+
+  // Validate if the user is logged in
+  try {
+    const userLogged = await db
+      .collection("participants")
+      .findOne({ name: user });
+    if (!userLogged) return res.status(422).send("User is not Online");
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+
+  // Get the messages that the user has access to
+  try {
+    messages = await db
+      .collection("messages")
+      .find({ $or: [{ from: user }, { to: user }, { to: "Todos" }] })
+      .toArray();
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+
+  // Valdations
+  if (!req.query.limit) return res.send(messages);
+  else {
+    let convertedLimit = Number(req.query.limit);
+
+    if (convertedLimit <= 0 || isNaN(convertedLimit))
+      return res.status(422).send("Limit parameter invalid");
+    else return res.status(200).send(messages.slice(-convertedLimit));
+  }
+});
+
 app.listen(PORT, () => console.log(`Running on port ${PORT}`));
