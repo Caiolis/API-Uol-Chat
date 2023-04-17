@@ -72,4 +72,15 @@ app.post("/participants", async (req, res) => {
   return res.sendStatus(201);
 });
 
+// Get Participants route
+app.get('/participants', async (req, res) => {
+  try {
+    const activeParticipants = await db.collection("participants").find().toArray();
+    return res.send(activeParticipants);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+
 app.listen(PORT, () => console.log(`Running on port ${PORT}`));
