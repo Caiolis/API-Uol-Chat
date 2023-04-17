@@ -181,17 +181,50 @@ app.post("/status", async (req, res) => {
   const { user } = req.headers;
 
   // Validations
-  const onlineUser = await db.collection("participants").findOne({name: user});
-  if(!user || !onlineUser) return res.sendStatus(404);
+  const onlineUser = await db
+    .collection("participants")
+    .findOne({ name: user });
+  if (!user || !onlineUser) return res.sendStatus(404);
 
   // Updates the lastStatus field
   try {
-    const updatedLastStatus = { $set: {lastStatus: Date.now()} };
-    await db.collection("participants").updateOne(onlineUser, updatedLastStatus);
+    const updatedLastStatus = { $set: { lastStatus: Date.now() } };
+    await db
+      .collection("participants")
+      .updateOne(onlineUser, updatedLastStatus);
     res.sendStatus(200);
   } catch (err) {
     res.status(500).send(err.message);
   }
 });
+
+// Verify the lastStatus field of all participants
+// If the user is Away for too long it logs them out
+// This function runs every 15 seconds
+async function verifyOnlineParticipants() {
+  const onlineParticipants = await db
+    .collection("participants")
+    .find()
+    .toArray();
+
+  for (let i = 0; i < onlineParticipants.length; i++) {
+    if (Date.now() - onlineParticipants[i].lastStatus > 10000) {
+      db.collection("participants").deleteOne({
+        _id: onlineParticipants[i]._id,
+      });
+
+      const leftTheRoomMessage = {
+        from: onlineParticipants[i].name,
+        to: "Todos",
+        text: "sai da sala...",
+        type: "status",
+        time: dayjs().format("HH:mm:ss"),
+      };
+      db.collection("messages").insertOne(leftTheRoomMessage);
+    }
+  }
+}
+
+setInterval(() => verifyOnlineParticipants(), 15000);
 
 app.listen(PORT, () => console.log(`Running on port ${PORT}`));
