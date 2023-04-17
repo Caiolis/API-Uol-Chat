@@ -139,6 +139,8 @@ app.post("/messages", async (req, res) => {
   }
 });
 
+// Get participants messages route
+// Limt param can be used
 app.get("/messages", async (req, res) => {
   const { user } = req.headers;
   let messages = null;
@@ -171,6 +173,24 @@ app.get("/messages", async (req, res) => {
     if (convertedLimit <= 0 || isNaN(convertedLimit))
       return res.status(422).send("Limit parameter invalid");
     else return res.status(200).send(messages.slice(-convertedLimit));
+  }
+});
+
+// Post status route
+app.post("/status", async (req, res) => {
+  const { user } = req.headers;
+
+  // Validations
+  const onlineUser = await db.collection("participants").findOne({name: user});
+  if(!user || !onlineUser) return res.sendStatus(404);
+
+  // Updates the lastStatus field
+  try {
+    const updatedLastStatus = { $set: {lastStatus: Date.now()} };
+    await db.collection("participants").updateOne(onlineUser, updatedLastStatus);
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.message);
   }
 });
 
